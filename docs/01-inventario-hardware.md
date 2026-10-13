@@ -21,9 +21,37 @@
 Contrastar el inventario con requisitos oficiales de la version prevista.
 Responder por separado y justificar con datos y fuentes:
 
-- Puedo instalar y arrancar Proxmox: PENDIENTE.
-- Puedo ejecutar el servidor ASO y el cliente del proyecto: PENDIENTE.
-- Condiciones o comprobaciones pendientes: PENDIENTE.
+- Puedo instalar y arrancar Proxmox: SI.**
+  El equipo cumple los requisitos de instalacion. CPU de 64 bits (x86_64) con
+  VT-x activo y EPT, que es justo el requisito obligatorio para la
+  virtualizacion completa KVM (lscpu: flag `vmx`, `Virtualizacion: VT-x`). RAM
+  de 8 GB, muy por encima del minimo de 2 GB para el sistema y los servicios de
+  Proxmox. Disco SSD de 250 GB con 177 GB libres, suficiente para el sistema.
+  Una NIC Ethernet Gigabit (Realtek RTL8111), que cubre el requisito de "una
+  NIC". Fuente: Proxmox VE System Requirements (minimo: CPU 64 bits con Intel
+  VT/AMD-V, 1 GB RAM, un disco, una NIC).
+- Puedo ejecutar el servidor ASO y el cliente del proyecto: SI, con limites.**
+  Con VT-x el host puede levantar VM KVM; sobre 8 GB entran a la vez srv-aso y
+  cli-linux dejando margen para el propio Proxmox, siempre que las VM se
+  dimensionen con contencion (p. ej. ~2 GB cada una y ~2-3 GB para el host).
+  Los 4 hilos permiten repartir vCPU entre host y las dos VM. El SSD aporta el
+  IOPS que Proxmox recomienda ("mejores resultados con discos SSD"). No es
+  hardware de produccion, pero cumple de sobra el perfil de evaluacion que
+  describe Proxmox, que es el caso de este proyecto.
+- Condiciones o comprobaciones pendiente: - **Modalidad (fisico o VirtualBox):** si se instala dentro de VirtualBox, hay
+    que **activar la virtualizacion anidada**; Proxmox solo se instala como
+    invitado si el virtualizador la soporta. Si es fisico, la instalacion borra
+    este Linux, lo que exige copia previa de datos y evidencias.
+  - **VT-x en BIOS:** ya aparece activo en `lscpu`, pero conviene verificar en el
+    firmware (AMI 0810) que sigue habilitado.
+  - **Modo de arranque y Secure Boot:** comprobar si el equipo arranca en UEFI o
+    Legacy para preparar el USB acorde (`[ -d /sys/firmware/efi ]`). Secure Boot
+    no es un problema: PVE lo soporta de forma nativa desde la version 8.1.
+  - **Red fisica:** `eth0` estaba DOWN (`link=no`) en la captura; hay que conectar
+    el cable, porque el bridge de Proxmox necesita enlace real.
+  - **RAM como factor limitante:** 8 GB es el minimo realista para tres cargas; si
+    se pretende mas de dos VM activas o servicios adicionales, habra que ampliar
+    (hay 2 slots libres, hasta 64 GB)..
 
 ## 2. Que limitaciones tendre con este hardware?
 
