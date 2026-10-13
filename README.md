@@ -30,7 +30,7 @@ Física ya que se usará un equipo fisico como servidor
 
 ## Estado
 
-- [ ] GitHub creado y primer commit publicado
+- [X] GitHub creado y primer commit publicado
 - [ ] URL entregada y acceso docente comprobado
 - [ ] Modalidad indicada
 - [ ] Inventario
