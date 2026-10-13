@@ -1,0 +1,38 @@
+---
+- name: Configuracion base del servicio ASO
+  hosts: srv_aso
+  become: true
+
+  vars:
+    grupo_aso: grupo_asir
+    recurso_aso: /srv/grupo_asir
+
+  tasks:
+    - name: Instalar paquetes base
+      ansible.builtin.apt:
+        name:
+          - samba
+          - acl
+          - smbclient
+          - rsync
+        state: present
+        update_cache: true
+
+    - name: Crear grupo del servicio
+      ansible.builtin.group:
+        name: "{{ grupo_aso }}"
+        state: present
+
+    - name: Crear directorio compartido
+      ansible.builtin.file:
+        path: "{{ recurso_aso }}"
+        state: directory
+        owner: root
+        group: "{{ grupo_aso }}"
+        mode: "2770"
+
+    - name: Asegurar servicio Samba activo
+      ansible.builtin.service:
+        name: smbd
+        state: started
+        enabled: true

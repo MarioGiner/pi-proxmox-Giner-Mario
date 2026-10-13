@@ -1,0 +1,32 @@
+# Credenciales y configuracion privada local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.vault_pass*
+.vault-password*
+secrets/
+*.local.ini
+*.local.yml
+
+# Imagenes y copias: usar el almacenamiento autorizado
+*.iso
+*.qcow2
+*.vmdk
+*.vdi
+*.raw
+*.img
+*.vma*
+*.tar
+*.tar.*
+*.zip
+backups/
+
+# Archivos temporales
+*.retry
+*.swp
+*~
+.DS_Store
