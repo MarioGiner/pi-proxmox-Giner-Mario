@@ -2,17 +2,7 @@
 
 ## Objetivo
 
-## Procedimiento
-
-## Comandos usados
-
-```bash
-
-```
-
 ## Evidencias
-
-## Incidencias
 
 ## Conclusion
 
