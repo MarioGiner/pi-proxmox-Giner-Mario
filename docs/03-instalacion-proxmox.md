@@ -99,7 +99,7 @@ source /etc/network/interfaces.d/*
 - Salida de `hostname -f`.
 - Captura del panel web de Proxmox con el nodo `pve-giner`.
 
-Las capturas estan en la carpeta [`../evidencias/`](../evidencias/).
+Las capturas estan en la carpeta [`../evidencias/instalacion-proxmox`](../evidencias/instalacion-proxmox).
 
 ## Incidencias
 
