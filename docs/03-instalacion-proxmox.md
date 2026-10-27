@@ -14,14 +14,14 @@ Instalar Proxmox VE dentro de una maquina virtual de VirtualBox en mi portatil (
    |---|---|
    | Nombre | `pve-giner` |
    | Tipo | Linux, Debian 64 bits |
-   | Memoria | [X] GB |
-   | CPU | [X] vCPU |
-   | Disco | VDI dinamico de 50 GB |
+   | Memoria | 12 GB |
+   | CPU | 6 vCPU |
+   | Disco | VDI dinamico de 80 GB |
    | Adaptador 1 | NAT |
    | Adaptador 2 | Solo-anfitrion (`vboxnet0`), modo promiscuo "Permitir todo" |
    | Virtualizacion anidada | Activada (VT-x/AMD-V anidado) |
 
-   Elegi 50 GB de disco porque es suficiente para el sistema, las dos maquinas del proyecto y alguna copia de seguridad, siempre que las maquinas sean pequenas. Al ser un disco dinamico solo ocupa en el portatil lo que se va usando.
+   Elegi 80 GB de disco porque es suficiente para el sistema, las dos maquinas del proyecto y alguna copia de seguridad, siempre que las maquinas sean pequenas. Al ser un disco dinamico solo ocupa en el portatil lo que se va usando.
 
 3. **Instalar Proxmox VE 9.2.** Arranque la VM con la ISO y segui el instalador. En la parte de red elegi la interfaz NAT, como indica la guia:
    - IP: `10.0.2.15/24`
@@ -41,13 +41,6 @@ Instalar Proxmox VE dentro de una maquina virtual de VirtualBox en mi portatil (
 ## Comandos usados
 
 ```bash
-# En el portatil (anfitrion)
-VBoxManage --version
-free -h
-nproc
-df -h
-VBoxManage modifyvm "pve-giner" --nested-hw-virt on
-VBoxManage showvminfo "pve-giner" | grep -i nested
 
 # En el nodo Proxmox: comprobar interfaces
 ip -br link
