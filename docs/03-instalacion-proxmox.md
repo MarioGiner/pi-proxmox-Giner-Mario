@@ -12,16 +12,16 @@ Instalar Proxmox VE dentro de una maquina virtual de VirtualBox en mi portatil (
    |---|---|
    | Nombre | `pve-giner` |
    | Tipo | Linux, Debian 64 bits |
-   | Memoria | [X] GB |
-   | CPU | [X] vCPU |
-   | Disco | VDI de tamano fijo de 50 GB |
+   | Memoria | 12 GB |
+   | CPU | 6 vCPU |
+   | Disco | VDI de tamano fijo de 80 GB |
    | Controlador del disco | VirtIO-SCSI, con "Usar cache de E/S del anfitrion" activado |
    | PAE/NX | Activado |
    | Paravirtualizacion | KVM |
    | Adaptador 1 | NAT |
    | Adaptador 2 | Solo-anfitrion (`vboxnet0`), modo promiscuo "Permitir todo" |
    | Virtualizacion anidada | Activada (VT-x/AMD-V anidado) |
-   Elegi 50 GB de disco porque es suficiente para el sistema, las dos maquinas del proyecto y alguna copia de seguridad, siempre que las maquinas sean pequenas. Lo puse de tamano fijo en vez de dinamico porque asi el espacio queda reservado desde el principio y el disco va mas rapido, ya que no tiene que ir creciendo mientras se usa.
+   Le di 12 GB de RAM y 6 vCPU porque el portatil tiene 30 GB de RAM y 16 hilos, asi que la VM tiene recursos suficientes para el nodo y las dos maquinas, y al portatil le sobra para seguir funcionando con normalidad. Elegi 80 GB de disco, que es lo que propone la guia, porque da espacio para el sistema, la plantilla, las dos maquinas del proyecto y las copias de seguridad. Lo puse de tamano fijo en vez de dinamico porque asi el espacio queda reservado desde el principio y el disco va mas rapido, ya que no tiene que ir creciendo mientras se usa.
    Ademas cambie algunas opciones para que la VM funcione mejor:
    - **VirtIO-SCSI** como controlador del disco, porque es un controlador pensado para maquinas virtuales y da mejor rendimiento que el SATA normal.
    - **Cache de E/S del anfitrion**, para que las lecturas y escrituras del disco vayan mas rapidas. Tiene el riesgo de que si el portatil se apaga de golpe se pueden perder datos que estaban en la cache, pero para un laboratorio compensa.
@@ -138,8 +138,97 @@ Como mi nodo es uno solo y no uso alta disponibilidad, desactive los servicios d
 **3. El nombre del nodo no era el correcto.**
 En el instalador escribi `pve.giner.lab.test` en lugar de `pve-giner.lab.test`, y el nodo se quedo con el nombre `pve`. Ademas, en `/etc/hosts` el nombre apuntaba a la IP de la NAT (`10.0.2.15`) en vez de a la de gestion. Lo corregi cambiando el hostname y el archivo `/etc/hosts` antes de crear ninguna maquina, porque despues es mas complicado.
  
+## Configuracion base del nodo
+ 
+Una vez instalado Proxmox, revise que el nodo tiene una base estable antes de crear las maquinas: almacenamiento, red, accesos y reparto de recursos.
+ 
+### Almacenamiento
+ 
+Revise los almacenamientos en **Datacenter > Storage** y desde la consola con `pvesm status` y `df -h`.
+ 
+| Almacenamiento | Tipo | Para que sirve | Espacio total | Libre |
+|---|---|---|---|---|
+| `local` | Directorio (`/var/lib/vz`) | Copias de seguridad, imagenes ISO, plantillas de contenedor e importacion | 29,2 GiB | 23,6 GiB |
+| `local-lvm` | LVM-Thin | Discos de las maquinas virtuales y de los contenedores | 29,7 GiB | 29,7 GiB |
+| `backups` | Directorio (`/var/lib/vz/backups`) | Solo copias de seguridad | 29,2 GiB (compartido con `local`) | 23,6 GiB |
+ 
+`local` y `local-lvm` se crean solos al instalar. Me fije en que no guardan lo mismo: los discos de las maquinas van a `local-lvm`, y las ISO y las copias van a `local`. Para tener las copias separadas cree un almacenamiento propio llamado `backups`, que solo admite copias de seguridad. Lo usare en la fase de copias.
+ 
+En el portatil la particion `/home`, donde esta la VM, tiene 194 GB y quedan 75 GB libres, asi que hay espacio de sobra para la VM.
+ 
+Limitacion: la carpeta `backups` esta dentro del mismo disco que el sistema y las maquinas, y ese disco a su vez esta en el disco del portatil. Si falla el disco del portatil se perderia el laboratorio y tambien sus copias. Para el proyecto es suficiente, pero en un entorno real las copias deberian ir a otro disco o a otro equipo.
+ 
+### Red
+ 
+Revise las interfaces en **pve-giner > Sistema > Red** y con `ip -br addr` e `ip route`. Coincide con lo que puse en el diagrama de red:
+ 
+| Interfaz | Adaptador de VirtualBox | IP | Funcion |
+|---|---|---|---|
+| `nic0` / `vmbr0` | Adaptador 1 (NAT) | `10.0.2.15/24`, gateway `10.0.2.2` | Salida a Internet del nodo |
+| `nic1` / `vmbr1` | Adaptador 2 (solo-anfitrion) | `192.168.56.10/24`, sin gateway | Gestion del nodo y red de `srv-aso` y `cli-linux` |
+ 
+La ruta por defecto sale por `vmbr0` hacia `10.0.2.2`, que es lo correcto, y la red `192.168.56.0/24` va por `vmbr1`. Desde el navegador del portatil entro al panel en `https://192.168.56.10:8006`. El nodo resuelve nombres y llega a Internet (ping correcto) y `apt update` descarga sin errores de los repositorios de Debian y de Proxmox.
+ 
+Para las actualizaciones uso el repositorio **no-subscription** de Proxmox, que es el gratuito. El repositorio enterprise necesita una suscripcion de pago y daria error al actualizar.
+ 
+### Accesos
+ 
+Solo hay una cuenta para administrar el nodo:
+ 
+| Cuenta | Tipo | Permisos | Uso |
+|---|---|---|---|
+| `root@pam` | Usuario del sistema Linux (PAM) | Administrador total del nodo | Panel web y consola |
+ 
+No he creado mas usuarios ni roles porque de momento no hacen falta. Las contrasenas no aparecen en las capturas ni en el repositorio. El firewall de Proxmox no lo he activado, porque no es obligatorio en la practica. El aislamiento del laboratorio se basa en que la red de las maquinas es la red solo-anfitrion, que solo conecta con mi portatil.
+ 
+### Reparto de recursos
+ 
+El portatil tiene 30 GB de RAM y 16 hilos. A la VM `pve-giner` le he dado 12 GB de RAM y 6 vCPU, asi que el portatil se queda con 18 GB y 10 hilos para el sistema y el resto de programas. Dentro de Proxmox el reparto queda asi:
+ 
+| Elemento | CPU/vCPU | RAM | Disco o almacenamiento | Motivo del reparto |
+|---|---|---|---|---|
+| Nodo Proxmox | Comparte las 6 vCPU | 2 GB reservados | Sistema en `local` (4,2 GB usados) | Lo necesita para sus servicios y el panel web |
+| `srv-aso` | 2 vCPU | 2 GB | 10 GB en `local-lvm` | Es el servidor de Samba, necesita algo mas que el cliente |
+| `cli-linux` | 1 vCPU | 1,5 GB | 8 GB en `local-lvm` | Solo se usa para hacer pruebas contra el servidor |
+| Plantillas, ISO, copias y margen | No aplica | 6,5 GB libres | Plantilla de 8 GB en `local-lvm`; ISO y copias en `local`/`backups` (23,6 GB libres) | Margen para la plantilla, las copias y poder restaurar sin apagar nada |
+ 
+Con las dos maquinas encendidas se usan unos 5,5 GB de los 12 GB de la VM, asi que queda margen para administrar el nodo sin problemas. En disco, la plantilla y las dos maquinas ocupan unos 26 GB de los 29,7 GB de `local-lvm`.
+ 
+### Comandos usados en esta parte
+ 
+```bash
+# Almacenamiento
+pvesm status
+df -h
+mkdir -p /var/lib/vz/backups
+pvesm add dir backups --path /var/lib/vz/backups --content backup
+ 
+# En el portatil
+df -h ~
+ 
+# Red y repositorios
+ip -br addr
+ip route
+ping -c 3 deb.debian.org
+apt update
+ 
+# Accesos
+pveum user list
+```
+ 
+### Evidencias de esta parte
+ 
+- Captura de **Datacenter > Storage** y salida de `pvesm status` con el almacenamiento `backups`.
+- Salida de `df -h` del nodo y del portatil.
+- Captura de **pve-giner > Sistema > Red** y salida de `ip -br addr` e `ip route`.
+- Salida del ping y de `apt update`.
+- Captura de los repositorios en **pve-giner > Actualizaciones > Repositorios**.
+- Salida de `pveum user list`.
+Comprobado: el panel es accesible, el nodo tiene salida a Internet, los almacenamientos estan activos y el reparto deja margen. Pendiente: actualizar los paquetes del nodo antes de crear la plantilla.
+ 
 ## Conclusion
  
 Proxmox VE ha quedado instalado dentro de VirtualBox en mi portatil con el nombre `pve-giner`. El nodo tiene dos redes: la NAT para salir a Internet y la solo-anfitrion para gestionarlo desde el navegador y para conectar las maquinas del proyecto. He aprendido que es importante revisar bien los datos del instalador (sobre todo el nombre y la red), porque corregirlos despues da mas trabajo. Tambien que los logs de VirtualBox y de Proxmox ayudan mucho a encontrar el origen de un problema. El siguiente paso es crear la plantilla Linux y desplegar `srv-aso` y `cli-linux`.
  
 [Volver al indice](../README.md)
+ 
